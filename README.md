@@ -1,6 +1,6 @@
 # Learning CMS
 
-A student exam management system built with Python, Flask, and React.
+A student exam management system built with Python (Flask) and Vue.js.
 
 ## Features
 - User management (admin, teacher, student)
@@ -9,6 +9,8 @@ A student exam management system built with Python, Flask, and React.
 - Frontend and mini-program support
 
 ## Setup
+
+### Backend
 1. Install dependencies:
    ```bash
    pip install -r requirements.txt
@@ -17,13 +19,22 @@ A student exam management system built with Python, Flask, and React.
    ```bash
    python database/init_db.py
    ```
-3. Run the backend:
+3. Run the backend server:
    ```bash
    python backend/app.py
    ```
-4. Start the frontend:
+
+### Frontend
+1. Install dependencies:
    ```bash
    cd frontend
    npm install
-   npm start
-   ``` 
+   ```
+2. Run the frontend development server:
+   ```bash
+   npm run dev
+   ```
+
+## Access
+- Backend: `http://127.0.0.1:5000/`
+- Frontend: `http://localhost:5173/`
