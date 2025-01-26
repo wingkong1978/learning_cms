@@ -38,3 +38,28 @@ A student exam management system built with Python (Flask) and Vue.js.
 ## Access
 - Backend: `http://127.0.0.1:5000/`
 - Frontend: `http://localhost:5173/`
+
+## Project Structure
+/
+├── backend/           # Backend application
+│   ├── app.py        # Main application entry
+│   ├── config.py     # Configuration settings
+│   ├── models.py     # Database models
+│   ├── extensions.py # Flask extensions
+│   └── routes/       # API routes
+│       ├── auth.py
+│       ├── exam.py
+│       ├── question.py
+│       └── search.py
+├── database/         # Database management
+│   └── init_db.py   # Database initialization
+├── frontend/        # Frontend application
+│   ├── src/        # Source code
+│   │   ├── App.vue
+│   │   ├── main.js
+│   │   ├── router/
+│   │   └── views/
+│   ├── public/     # Static files
+│   └── package.json
+├── requirements.txt # Python dependencies
+└── README.md       # Project documentation
