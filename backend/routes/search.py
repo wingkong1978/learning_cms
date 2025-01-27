@@ -1,10 +1,21 @@
 from flask import Blueprint, request, jsonify
-from backend.models import Question
+from backend.models.question import Question
 
 search_bp = Blueprint('search', __name__)
 
 @search_bp.route('/search', methods=['GET'])
 def search_questions():
-    keyword = request.args.get('keyword')
+    keyword = request.args.get('keyword', '')
+    if not keyword:
+        return jsonify({
+            'results': [],
+            'total': 0
+        })
+
     questions = Question.query.filter(Question.content.like(f'%{keyword}%')).all()
-    return jsonify([{'id': q.id, 'content': q.content} for q in questions]), 200 
+    results = [q.to_dict() for q in questions]
+    
+    return jsonify({
+        'results': results,
+        'total': len(results)
+    }) 

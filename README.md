@@ -63,3 +63,25 @@ A student exam management system built with Python (Flask) and Vue.js.
 │   └── package.json
 ├── requirements.txt # Python dependencies
 └── README.md       # Project documentation
+
+## Deployment
+
+### Deploy to Sealos Cloud
+
+1. Build the Docker image:
+   ```bash
+   docker build -t learning-cms .
+   ```
+
+2. Push to Sealos registry:
+   ```bash
+   docker tag learning-cms sealos.hub/learning-cms:latest
+   docker push sealos.hub/learning-cms:latest
+   ```
+
+3. Deploy to Sealos:
+   ```bash
+   kubectl apply -f deployment.yaml
+   ```
+
+The application will be available at the LoadBalancer IP provided by Sealos.

@@ -7,32 +7,76 @@
         <span class="admin-text">ADMIN</span>
       </div>
       <h2 class="subtitle">用户登录</h2>
-      <form @submit.prevent="login" class="login-form">
-        <div class="form-group">
+      
+      <form @submit.prevent="handleSubmit" class="login-form">
+        <!-- 用户名/邮箱输入框 -->
+        <div class="form-group" :class="{ 'has-error': errors.username }">
           <input
             type="text"
-            v-model="username"
-            placeholder="用户名/邮箱/手机号"
+            v-model="form.username"
+            placeholder="用户名/邮箱"
             class="form-input"
+            :disabled="loading"
+            @input="validateUsername"
           />
+          <span class="error-message" v-if="errors.username">{{ errors.username }}</span>
         </div>
-        <div class="form-group">
-          <input
-            type="password"
-            v-model="password"
-            placeholder="登录密码"
-            class="form-input"
-          />
+
+        <!-- 密码输入框 -->
+        <div class="form-group" :class="{ 'has-error': errors.password }">
+          <div class="password-input">
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              v-model="form.password"
+              placeholder="登录密码"
+              class="form-input"
+              :disabled="loading"
+              @input="validatePassword"
+            />
+            <button
+              type="button"
+              class="toggle-password"
+              @click="showPassword = !showPassword"
+            >
+              <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            </button>
+          </div>
+          <span class="error-message" v-if="errors.password">{{ errors.password }}</span>
+          <div class="password-strength" v-if="form.password">
+            <div class="strength-bar" :class="passwordStrength"></div>
+            <span class="strength-text">{{ passwordStrengthText }}</span>
+          </div>
         </div>
-        <div class="options-row">
-          <label class="remember-label">
-            <input type="checkbox" v-model="remember" />
-            <span>记住登录信息</span>
+
+        <!-- 记住我和忘记密码 -->
+        <div class="form-options">
+          <label class="remember-me">
+            <input
+              type="checkbox"
+              v-model="form.rememberMe"
+              :disabled="loading"
+            />
+            <span>记住我</span>
           </label>
-          <a href="#" class="forgot-link">忘记密码?</a>
+          <a href="#" class="forgot-password" @click.prevent="handleForgotPassword">忘记密码？</a>
         </div>
-        <button type="submit" class="login-button">登录</button>
+
+        <!-- 登录按钮 -->
+        <button
+          type="submit"
+          class="login-button"
+          :disabled="loading || !isFormValid"
+        >
+          <span v-if="!loading">登录</span>
+          <i v-else class="fas fa-spinner fa-spin"></i>
+        </button>
       </form>
+
+      <!-- 错误提示 -->
+      <div v-if="globalError" class="global-error">
+        {{ globalError }}
+      </div>
+
       <div class="third-party-login">
         <p class="login-divider">使用合作账户登录</p>
         <div class="login-methods">
@@ -58,36 +102,137 @@
 </template>
 
 <script>
+import { ref, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
 export default {
-  data() {
-    return {
+  name: 'LoginView',
+  setup() {
+    const router = useRouter()
+    const authStore = useAuthStore()
+
+    const form = reactive({
       username: '',
       password: '',
-      remember: false
+      rememberMe: false
+    })
+
+    const errors = reactive({
+      username: '',
+      password: ''
+    })
+
+    const loading = ref(false)
+    const showPassword = ref(false)
+    const globalError = ref('')
+
+    // 表单验证
+    const validateUsername = () => {
+      if (!form.username) {
+        errors.username = '请输入用户名或邮箱'
+      } else if (form.username.includes('@') && !isValidEmail(form.username)) {
+        errors.username = '请输入有效的邮箱地址'
+      } else {
+        errors.username = ''
+      }
     }
-  },
-  methods: {
-    async login() {
+
+    const validatePassword = () => {
+      if (!form.password) {
+        errors.password = '请输入密码'
+      } else if (form.password.length < 6) {
+        errors.password = '密码长度至少6位'
+      } else {
+        errors.password = ''
+      }
+    }
+
+    // 密码强度检查
+    const passwordStrength = computed(() => {
+      if (!form.password) return ''
+      const strength = checkPasswordStrength(form.password)
+      return `strength-${strength}`
+    })
+
+    const passwordStrengthText = computed(() => {
+      if (!form.password) return ''
+      const strengthMap = {
+        weak: '弱',
+        medium: '中',
+        strong: '强'
+      }
+      return strengthMap[checkPasswordStrength(form.password)]
+    })
+
+    // 表单提交
+    const handleSubmit = async () => {
+      validateUsername()
+      validatePassword()
+
+      if (!isFormValid.value) return
+
+      loading.value = true
+      globalError.value = ''
+
       try {
-        const response = await fetch('/api/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: this.username,
-            password: this.password
-          })
+        const response = await authStore.login({
+          username: form.username,
+          password: form.password,
+          rememberMe: form.rememberMe
         })
-        const data = await response.json()
-        if (response.ok) {
-          this.$router.push('/')
+
+        if (response.error) {
+          globalError.value = response.message
         } else {
-          alert(data.error || '登录失败')
+          router.push('/admin')
         }
       } catch (error) {
-        alert('连接服务器失败')
+        globalError.value = '登录失败，请稍后重试'
+        console.error('Login error:', error)
+      } finally {
+        loading.value = false
       }
+    }
+
+    // 辅助函数
+    const isValidEmail = (email) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    }
+
+    const checkPasswordStrength = (password) => {
+      const hasLetter = /[a-zA-Z]/.test(password)
+      const hasNumber = /\d/.test(password)
+      const hasSpecial = /[!@#$%^&*]/.test(password)
+      
+      if (password.length < 6) return 'weak'
+      if (hasLetter && hasNumber && hasSpecial) return 'strong'
+      if ((hasLetter && hasNumber) || (hasLetter && hasSpecial) || (hasNumber && hasSpecial)) return 'medium'
+      return 'weak'
+    }
+
+    const isFormValid = computed(() => {
+      return !errors.username && !errors.password && form.username && form.password
+    })
+
+    const handleForgotPassword = () => {
+      // 实现忘记密码逻辑
+      console.log('Forgot password clicked')
+    }
+
+    return {
+      form,
+      errors,
+      loading,
+      showPassword,
+      globalError,
+      passwordStrength,
+      passwordStrengthText,
+      isFormValid,
+      handleSubmit,
+      validateUsername,
+      validatePassword,
+      handleForgotPassword
     }
   }
 }
@@ -276,5 +421,106 @@ export default {
 
 .icon-alipay {
   color: #1677FF;
+}
+
+.password-input {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+}
+
+.password-strength {
+  margin-top: 5px;
+}
+
+.strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 5px;
+}
+
+.strength-weak {
+  background: #f44336;
+  width: 30%;
+}
+
+.strength-medium {
+  background: #ffc107;
+  width: 60%;
+}
+
+.strength-strong {
+  background: #4caf50;
+  width: 100%;
+}
+
+.strength-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.has-error .form-input {
+  border-color: #f44336;
+}
+
+.error-message {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.global-error {
+  margin-top: 20px;
+  padding: 10px;
+  background: #ffebee;
+  color: #f44336;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 15px 0;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #666;
+}
+
+.forgot-password {
+  color: #2196f3;
+  text-decoration: none;
+}
+
+.login-button {
+  position: relative;
+  width: 100%;
+}
+
+.login-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.fa-spinner {
+  animation: spin 1s linear infinite;
 }
 </style> 
